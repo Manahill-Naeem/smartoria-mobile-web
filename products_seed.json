@@ -1,0 +1,82 @@
+[
+  {
+    "title": "Sony WH-1000XM5 Wireless Headphones",
+    "image": "/uploads/sony-wh1000xm5.jpg",
+    "price": 349.99,
+    "oldPrice": 399.99,
+    "stock": 10,
+    "discount": 13,
+    "category": "Audio",
+    "subcategory": "Headphones"
+  },
+  {
+    "title": "JBL Tune 510BT On-Ear Headphones",
+    "image": "/uploads/jbl-tune510bt.jpg",
+    "price": 49.99,
+    "oldPrice": 69.99,
+    "stock": 15,
+    "discount": 29,
+    "category": "Audio",
+    "subcategory": "Headphones"
+  },
+  {
+    "title": "Liquid Ears Wireless Earbuds",
+    "image": "/uploads/liquid-ears-earbuds.jpg",
+    "price": 29.99,
+    "oldPrice": 39.99,
+    "stock": 20,
+    "discount": 25,
+    "category": "Audio",
+    "subcategory": "Liquid Ears"
+  },
+  {
+    "title": "Bose SoundLink Flex Bluetooth Speaker",
+    "image": "/uploads/bose-soundlink-flex.jpg",
+    "price": 129.99,
+    "oldPrice": 149.99,
+    "stock": 8,
+    "discount": 13,
+    "category": "Audio",
+    "subcategory": "Speakers"
+  },
+  {
+    "title": "Anker Soundcore Mini Speaker",
+    "image": "/uploads/anker-mini.jpg",
+    "price": 24.99,
+    "oldPrice": 29.99,
+    "stock": 25,
+    "discount": 17,
+    "category": "Audio",
+    "subcategory": "Speakers"
+  },
+  {
+    "title": "Belkin Ultra HD HDMI Cable 2m",
+    "image": "/uploads/belkin-hdmi.jpg",
+    "price": 19.99,
+    "oldPrice": 24.99,
+    "stock": 30,
+    "discount": 20,
+    "category": "Cables",
+    "subcategory": "HDMI"
+  },
+  {
+    "title": "Amazon Basics USB 3.0 Cable 1m",
+    "image": "/uploads/amazon-usb3.jpg",
+    "price": 7.99,
+    "oldPrice": 9.99,
+    "stock": 50,
+    "discount": 20,
+    "category": "Cables",
+    "subcategory": "USB"
+  },
+  {
+    "title": "Apple Lightning to USB Cable 1m",
+    "image": "/uploads/apple-lightning.jpg",
+    "price": 19.99,
+    "oldPrice": 24.99,
+    "stock": 40,
+    "discount": 20,
+    "category": "Cables",
+    "subcategory": "Lightning"
+  }
+]
