@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect } from "react";
+// Removed: import { useEffect } from "react"; // No longer used
 import { useCurrency } from '../context/CurrencyContext';
 import { useCart } from '../context/CartContext';
 
@@ -33,17 +33,23 @@ function ProductCard({ product }: { product: Product }) {
       return `Error!`;
     }
 
+    const numericPrice = Number(originalPrice); // Ensure price is numeric
+    if (isNaN(numericPrice)) {
+      console.error("Invalid price for conversion:", originalPrice);
+      return "N/A";
+    }
+
     if (currentCurrency === 'PKR') {
-      return originalPrice.toFixed(2);
+      return numericPrice.toFixed(2);
     } else if (currentCurrency === 'AUD') {
       if (exchangeRateAUDtoPKR === 0) {
         console.error("Exchange rate for AUD to PKR is zero, cannot convert.");
         return "N/A";
       }
-      const priceInAUD = originalPrice / exchangeRateAUDtoPKR;
+      const priceInAUD = numericPrice / exchangeRateAUDtoPKR;
       return priceInAUD.toFixed(2);
     }
-    return originalPrice.toFixed(2);
+    return numericPrice.toFixed(2);
   };
 
   const displayCurrencySymbol = (currencyCode: 'PKR' | 'AUD') => {
@@ -65,6 +71,7 @@ function ProductCard({ product }: { product: Product }) {
         return;
     }
     // Pass the product object with a guaranteed _id field for cart context's expected type
+    // Assuming CartItem type in CartContext expects _id, title, image, price
     await addToCart({
       _id: productIdForCart, // Ensure _id is present (either from real data or dummy.id)
       title: product.title,
@@ -90,7 +97,7 @@ function ProductCard({ product }: { product: Product }) {
             height={160}
             className="mx-auto h-36 object-contain"
             onError={(e) => {
-                e.currentTarget.srcset = '';
+                e.currentTarget.srcset = ''; // Clear srcset to prevent further attempts with original srcset
                 e.currentTarget.src = "https://placehold.co/220x160/CCCCCC/666666?text=Image+Error";
             }}
           />
@@ -108,12 +115,12 @@ function ProductCard({ product }: { product: Product }) {
       </Link>
 
       <div className="flex items-center gap-2 mb-2">
-        <button className="text-neutral-400 hover:text-red-500">
+        <button className="text-neutral-400 hover:text-red-500" aria-label="Add to wishlist">
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M12 21C12 21 4 13.5 4 8.5C4 5.5 6.5 3 9.5 3C11.04 3 12.5 3.99 13.07 5.36C13.64 3.99 15.1 3 16.65 3C19.65 3 22 5.5 22 8.5C22 13.5 12 21 12 21Z" />
           </svg>
         </button>
-        <button className="text-neutral-400 hover:text-blue-500">
+        <button className="text-neutral-400 hover:text-blue-500" aria-label="Compare product">
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <rect x="3" y="3" width="18" height="18" rx="2" />
           </svg>
@@ -157,10 +164,10 @@ function ProductCard({ product }: { product: Product }) {
         }`}
       >
         {cartLoading ? (
-           <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-           </svg>
+            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
         ) : (
           <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="9" cy="21" r="1" />

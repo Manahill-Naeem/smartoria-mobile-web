@@ -13,24 +13,24 @@
     "@stripe/stripe-js": "^3.5.0",
     "firebase": "^11.9.1",
     "mongodb": "^6.17.0",
-    "next": "15.3.4",
+    "next": "^15.3.4",
     "nodemailer": "^6.9.13",
-    "react": "^18.0.0",       
-    "react-dom": "^18.0.0",    
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "stripe": "^15.9.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^20.8.0",
     "@types/nodemailer": "^6.4.17",
-    "@types/react": "^18.0.0",   
-    "@types/react-dom": "^18.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
     "@types/stripe": "^8.0.417",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
     "postcss": "^8",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5.8.3"
   }
 }

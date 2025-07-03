@@ -12,6 +12,9 @@ interface Window {
 // Additionally, declare them as global 'var' if they are sometimes accessed
 // directly without the 'window.' prefix (as is the case in CartContext.tsx and API routes).
 // This tells TypeScript that these variables exist directly in the global scope.
+// eslint-disable-next-line no-var
 declare var __app_id: string | undefined;
+// eslint-disable-next-line no-var
 declare var __firebase_config: string | undefined;
+// eslint-disable-next-line no-var
 declare var __initial_auth_token: string | undefined;

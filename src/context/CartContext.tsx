@@ -1,8 +1,9 @@
+// src/context/CartContext.tsx
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, Auth } from 'firebase/auth';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
 import {
   getFirestore,
   doc,
@@ -11,19 +12,15 @@ import {
   deleteDoc,
   onSnapshot,
   collection,
-  query,
-  where,
-  addDoc,
   getDocs,
   Firestore,
   serverTimestamp,
-  DocumentData,
   Timestamp,
   FieldValue,
 } from 'firebase/firestore';
 
 interface CartItem {
-  productId: string; // This will always be a string when stored in Firestore (doc.id)
+  productId: string;
   title: string;
   image: string;
   price: number;
@@ -31,10 +28,9 @@ interface CartItem {
   addedAt?: Timestamp | FieldValue;
 }
 
-// Define the type for the product object passed to addToCart
 interface ProductForCart {
-  _id?: string; // Make _id optional for addToCart, as dummy products might use 'id'
-  id?: string; // Allow 'id' for dummy products
+  _id?: string;
+  id?: string;
   title: string;
   image: string;
   price: number;
@@ -42,7 +38,6 @@ interface ProductForCart {
 
 interface CartContextType {
   cartItems: CartItem[];
-  // Change parameter type to use ProductForCart
   addToCart: (product: ProductForCart, quantity: number) => Promise<void>;
   removeFromCart: (productId: string) => Promise<void>;
   updateQuantity: (productId: string, newQuantity: number) => Promise<void>;
@@ -61,25 +56,43 @@ interface CartProviderProps {
   children: ReactNode;
 }
 
+declare global {
+  var __firebase_config: string | undefined;
+  var __initial_auth_token: string | undefined;
+  var __app_id: string | undefined;
+}
+
 export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartLoading, setCartLoading] = useState<boolean>(true);
   const [cartError, setCartError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [db, setDb] = useState<Firestore | null>(null);
-  const [auth, setAuth] = useState<Auth | null>(null);
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
 
-  // Firebase Initialization and Authentication
   useEffect(() => {
     if (typeof window !== 'undefined' && !db) {
       try {
-        let config: any;
+        let config: {
+          apiKey?: string;
+          authDomain?: string;
+          projectId?: string;
+          storageBucket?: string;
+          messagingSenderId?: string;
+          appId?: string;
+          measurementId?: string;
+        } = {};
+
         if (typeof __firebase_config !== 'undefined' && __firebase_config) {
           try {
             config = JSON.parse(__firebase_config);
-          } catch (e) {
+          } catch (e: unknown) {
             console.error("Failed to parse __firebase_config:", e);
+            if (e instanceof Error) {
+                setCartError(`Firebase config parse error: ${e.message}`);
+            } else {
+                setCartError("Firebase config parse error: An unknown error occurred.");
+            }
             config = {};
           }
         } else {
@@ -96,15 +109,14 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         }
 
         if (!config || Object.keys(config).length === 0 || !config.projectId) {
-            throw new Error("Firebase config is completely missing or empty. Please ensure it's provided or correctly configured for development.");
+          throw new Error("Firebase config is completely missing or empty. Please ensure it's provided or correctly configured for development.");
         }
 
-        const app = initializeApp(config);
+        const app: FirebaseApp = initializeApp(config as { [key: string]: string });
         const firestoreDb = getFirestore(app);
         const firebaseAuth = getAuth(app);
 
         setDb(firestoreDb);
-        setAuth(firebaseAuth);
 
         const unsubscribeAuth = onAuthStateChanged(firebaseAuth, async (user) => {
           if (user) {
@@ -122,9 +134,13 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
                 setUserId(firebaseAuth.currentUser?.uid || crypto.randomUUID());
                 console.log("Signed in anonymously successfully.");
               }
-            } catch (anonError) {
+            } catch (anonError: unknown) {
               console.error("Anonymous sign-in or custom token sign-in failed:", anonError);
-              setCartError("Authentication failed. Cart might not be saved.");
+              if (anonError instanceof Error) {
+                setCartError(`Authentication failed: ${anonError.message}. Cart might not be saved.`);
+              } else {
+                setCartError("Authentication failed. Cart might not be saved.");
+              }
               setUserId(crypto.randomUUID());
             }
           }
@@ -135,17 +151,20 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           if (unsubscribeAuth) unsubscribeAuth();
         };
 
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error("Failed to initialize Firebase:", e);
-        setCartError(`Firebase initialization error: ${e.message}`);
+        if (e instanceof Error) {
+          setCartError(`Firebase initialization error: ${e.message}`);
+        } else {
+          setCartError("Firebase initialization error: An unknown error occurred.");
+        }
         setIsAuthReady(true);
       }
     }
-  }, []);
+  }, [db]);
 
-  // Fetch cart items from Firestore
   useEffect(() => {
-    let unsubscribe: () => void;
+    let unsubscribe: () => void | undefined;
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'development-app-id';
 
     if (db && userId && isAuthReady) {
@@ -164,14 +183,22 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           setCartItems(items);
           setCartLoading(false);
           console.log("Cart items updated from Firestore:", items);
-        }, (error: any) => {
+        }, (error: unknown) => {
           console.error("Error fetching real-time cart updates:", error);
-          setCartError(`Failed to get real-time cart updates: ${error.message}`);
+          if (error instanceof Error) {
+            setCartError(`Failed to get real-time cart updates: ${error.message}`);
+          } else {
+            setCartError("Failed to get real-time cart updates: An unknown error occurred.");
+          }
           setCartLoading(false);
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error("Error setting up onSnapshot for cart:", e);
-        setCartError(`Failed to load cart items: ${e.message}`);
+        if (e instanceof Error) {
+          setCartError(`Failed to load cart items: ${e.message}`);
+        } else {
+          setCartError("Failed to load cart items: An unknown error occurred.");
+        }
         setCartLoading(false);
       }
     } else if (isAuthReady && !userId) {
@@ -188,8 +215,6 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     };
   }, [db, userId, isAuthReady]);
 
-  // Add/Update item in cart
-  // Use ProductForCart type for the product parameter
   const addToCart = useCallback(async (product: ProductForCart, quantity: number) => {
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'development-app-id';
 
@@ -202,12 +227,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     setCartLoading(true);
 
     try {
-      // Determine the actual product ID to use for Firestore document
       const actualProductId = product._id || product.id;
       if (!actualProductId) {
         console.error("Cannot add to cart: Product has no _id or id.");
         setCartError("Product ID is missing.");
-        setCartLoading(false);
         return;
       }
 
@@ -224,7 +247,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         console.log(`Updated quantity for ${product.title} to ${newQuantity}`);
       } else {
         const newItem: CartItem = {
-          productId: actualProductId, // Use the determined ID
+          productId: actualProductId,
           title: product.title,
           image: product.image,
           price: product.price,
@@ -234,11 +257,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         await setDoc(cartItemRef, newItem);
         console.log(`Added ${product.title} to cart.`);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error adding/updating item to cart:", e);
-      setCartError(`Failed to add/update item: ${e.message}`);
+      if (e instanceof Error) {
+        setCartError(`Failed to add/update item: ${e.message}`);
+      } else {
+        setCartError("Failed to add/update item: An unknown error occurred.");
+      }
     } finally {
-        setCartLoading(false);
+      setCartLoading(false);
     }
   }, [db, userId, cartItems]);
 
@@ -247,6 +274,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
     if (!db || !userId) {
       setCartError("Database or user not ready. Cannot remove from cart.");
+      console.error("removeFromCart: DB or userId not ready.");
       return;
     }
     setCartError(null);
@@ -256,11 +284,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const cartItemRef = doc(db, `artifacts/${appId}/users/${userId}/cartItems`, productId);
       await deleteDoc(cartItemRef);
       console.log(`Removed product ${productId} from cart.`);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error removing item from cart:", e);
-      setCartError(`Failed to remove item: ${e.message}`);
+      if (e instanceof Error) {
+        setCartError(`Failed to remove item: ${e.message}`);
+      } else {
+        setCartError("Failed to remove item: An unknown error occurred.");
+      }
     } finally {
-        setCartLoading(false);
+      setCartLoading(false);
     }
   }, [db, userId]);
 
@@ -269,6 +301,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
     if (!db || !userId) {
       setCartError("Database or user not ready. Cannot update quantity.");
+      console.error("updateQuantity: DB or userId not ready.");
       return;
     }
     if (newQuantity <= 0) {
@@ -282,11 +315,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const cartItemRef = doc(db, `artifacts/${appId}/users/${userId}/cartItems`, productId);
       await updateDoc(cartItemRef, { quantity: newQuantity, addedAt: serverTimestamp() });
       console.log(`Updated quantity for product ${productId} to ${newQuantity}.`);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error updating quantity:", e);
-      setCartError(`Failed to update quantity: ${e.message}`);
+      if (e instanceof Error) {
+        setCartError(`Failed to update quantity: ${e.message}`);
+      } else {
+        setCartError("Failed to update quantity: An unknown error occurred.");
+      }
     } finally {
-        setCartLoading(false);
+      setCartLoading(false);
     }
   }, [db, userId, removeFromCart]);
 
@@ -295,6 +332,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
 
     if (!db || !userId) {
       setCartError("Database or user not ready. Cannot clear cart.");
+      console.error("clearCart: DB or userId not ready.");
       return;
     }
     setCartError(null);
@@ -306,11 +344,15 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
       const deletePromises = querySnapshot.docs.map(d => deleteDoc(d.ref));
       await Promise.all(deletePromises);
       console.log("Cart cleared.");
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("Error clearing cart:", e);
-      setCartError(`Failed to clear cart: ${e.message}`);
+      if (e instanceof Error) {
+        setCartError(`Failed to clear cart: ${e.message}`);
+      } else {
+        setCartError("Failed to clear cart: An unknown error occurred.");
+      }
     } finally {
-        setCartLoading(false);
+      setCartLoading(false);
     }
   }, [db, userId]);
 
@@ -342,7 +384,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
           </svg>
           <p className="text-lg text-gray-700">Loading application...</p>
-          <p className="text-sm text-gray-500">Establishing secure connection for cart.</p>
+          <p className="text-sm text-gray-500">Initializing Firebase and authenticating user...</p>
         </div>
       )}
     </CartContext.Provider>

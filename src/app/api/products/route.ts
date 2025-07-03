@@ -1,15 +1,27 @@
+// ./src/app/api/products/route.ts
 import clientPromise from '@/utils/mongodb';
-import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
     const client = await clientPromise;
     const db = client.db();
     const products = await db.collection('products').find({}).toArray();
-    return NextResponse.json(products);
-  } catch (e) {
-    console.error('GET /api/products error:', e); // Debug log
-    return NextResponse.json({ error: 'Failed to fetch products', details: String(e) }, { status: 500 });
+    return new Response(JSON.stringify(products), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error: unknown) {
+    console.error('GET /api/products error:', error);
+    if (error instanceof Error) {
+      return new Response(JSON.stringify({ error: 'Failed to fetch products', details: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    return new Response(JSON.stringify({ error: 'Failed to fetch products', details: 'An unknown error occurred' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 
@@ -20,14 +32,30 @@ export async function POST(req: Request) {
     const requiredFields = ['title', 'price', 'category', 'subcategory', 'image'];
     for (const field of requiredFields) {
       if (!body[field] || body[field].toString().trim() === '') {
-        return NextResponse.json({ error: `Missing or empty field: ${field}` }, { status: 400 });
+        return new Response(JSON.stringify({ error: `Missing or empty field: ${field}` }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
     }
     const client = await clientPromise;
     const db = client.db();
     const result = await db.collection('products').insertOne(body);
-    return NextResponse.json({ insertedId: result.insertedId });
-  } catch (e) {
-    return NextResponse.json({ error: 'Failed to add product' }, { status: 500 });
+    return new Response(JSON.stringify({ insertedId: result.insertedId }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error: unknown) {
+    console.error('POST /api/products error:', error);
+    if (error instanceof Error) {
+      return new Response(JSON.stringify({ error: 'Failed to add product', details: error.message }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+    return new Response(JSON.stringify({ error: 'Failed to add product', details: 'An unknown error occurred' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

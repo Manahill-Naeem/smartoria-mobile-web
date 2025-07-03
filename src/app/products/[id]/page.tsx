@@ -3,14 +3,16 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation'; // To get the dynamic ID from the URL
-import { useCart } from '@/context/CartContext'; // Import useCart
-import { useCurrency } from '@/context/CurrencyContext'; // Import useCurrency
-import { Product } from '@/components/ProductCard'; // Import Product interface
+import { usePathname } from 'next/navigation';
+import Link from 'next/link'; // <--- Import Link
+import { useCart } from '@/context/CartContext';
+import { useCurrency } from '@/context/CurrencyContext';
+import { Product } from '@/components/ProductCard';
 
 export default function ProductDetailPage() {
   const pathname = usePathname();
-  const productId = pathname.split('/').pop(); // Extract ID from URL
+  const productId = pathname ? pathname.split('/').pop() : null;
+
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,10 +20,9 @@ export default function ProductDetailPage() {
   const { addToCart, cartLoading, isAuthReady } = useCart();
   const { currentCurrency, exchangeRateAUDtoPKR, loadingRates, ratesError } = useCurrency();
 
-  // Fetch product data on component mount
   useEffect(() => {
     if (!productId) {
-      setError("Product ID is missing.");
+      setError("Product ID is missing in the URL.");
       setLoading(false);
       return;
     }
@@ -33,23 +34,30 @@ export default function ProductDetailPage() {
         const res = await fetch(`/api/products/${productId}`);
         if (!res.ok) {
           const errorData = await res.json();
-          throw new Error(errorData.error || `Failed to fetch product: ${res.statusText}`);
+          throw new Error(errorData.message || `Failed to fetch product: ${res.statusText}`);
         }
-        const data = await res.json();
+        const data: Product = await res.json();
         setProduct(data);
-      } catch (err: any) {
+      } catch (err: unknown) { // <--- Changed to unknown
         console.error("Error fetching product:", err);
-        setError(err.message || "Failed to load product details.");
+        // Type check 'err' before accessing properties
+        setError(err instanceof Error ? err.message : "Failed to load product details.");
       } finally {
         setLoading(false);
       }
     };
 
     fetchProduct();
-  }, [productId]); // Re-fetch if product ID changes (e.g., if navigating between dynamic product pages)
+  }, [productId]);
 
-  // Function to calculate and format price based on selected currency
-  const getConvertedPrice = (originalPrice: number) => {
+  const getConvertedPrice = (originalPrice: number): string => {
+    const numericPrice = Number(originalPrice);
+
+    if (isNaN(numericPrice)) {
+      console.error("Invalid price received:", originalPrice);
+      return "N/A";
+    }
+
     if (loadingRates || exchangeRateAUDtoPKR === null) {
       return `Loading...`;
     }
@@ -58,19 +66,19 @@ export default function ProductDetailPage() {
     }
 
     if (currentCurrency === 'PKR') {
-      return originalPrice.toFixed(2);
+      return numericPrice.toFixed(2);
     } else if (currentCurrency === 'AUD') {
       if (exchangeRateAUDtoPKR === 0) {
-        console.error("Exchange rate for AUD to PKR is zero, cannot convert.");
-        return "N/A";
+        console.error("Exchange rate for AUD to PKR is zero, cannot convert. Using original PKR price.");
+        return numericPrice.toFixed(2);
       }
-      const priceInAUD = originalPrice / exchangeRateAUDtoPKR;
+      const priceInAUD = numericPrice / exchangeRateAUDtoPKR;
       return priceInAUD.toFixed(2);
     }
-    return originalPrice.toFixed(2);
+    return numericPrice.toFixed(2);
   };
 
-  const displayCurrencySymbol = (currencyCode: 'PKR' | 'AUD') => {
+  const displayCurrencySymbol = (currencyCode: 'PKR' | 'AUD' | string) => {
     switch (currencyCode) {
       case 'PKR': return 'PKR ';
       case 'AUD': return 'AUD ';
@@ -80,19 +88,18 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = async () => {
     if (!product || !product._id) {
-        console.error("Product data or ID is missing for Add to Cart.");
-        return;
+      console.error("Product data or ID is missing for Add to Cart.");
+      return;
     }
     await addToCart(product, 1);
   };
 
-  // Determine if "Add to Cart" button should be disabled
   const isAddToCartDisabled = cartLoading || (product && product.stock === 0) || !isAuthReady;
 
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
         <svg className="animate-spin h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
@@ -105,10 +112,10 @@ export default function ProductDetailPage() {
   if (error) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-red-50 py-10 px-4">
-        <h2 className="text-2xl font-bold text-red-700 mb-4">Error!</h2>
+        <h2 className="text-2xl font-bold text-red-700 mb-4">Error Loading Product!</h2>
         <p className="text-red-600 text-center">{error}</p>
         <p className="text-gray-500 mt-4">Please try again or go back to the homepage.</p>
-        <a href="/" className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition">Go to Homepage</a>
+        <Link href="/" className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition">Go to Homepage</Link> {/* <--- Used Link */}
       </div>
     );
   }
@@ -117,8 +124,8 @@ export default function ProductDetailPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-10 px-4">
         <h2 className="text-2xl font-bold text-gray-700 mb-4">Product Not Found</h2>
-        <p className="text-gray-600">The product you are looking for does not exist.</p>
-        <a href="/" className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition">Go to Homepage</a>
+        <p className="text-gray-600">The product you are looking for does not exist or was removed.</p>
+        <Link href="/" className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition">Go to Homepage</Link> {/* <--- Used Link */}
       </div>
     );
   }
@@ -164,7 +171,7 @@ export default function ProductDetailPage() {
                     <span className="text-5xl font-bold text-red-600">
                       {displayCurrencySymbol(currentCurrency)}{getConvertedPrice(product.price)}
                     </span>
-                    {product.oldPrice && product.oldPrice > product.price && (
+                    {product.oldPrice && Number(product.oldPrice) > Number(product.price) && (
                       <span className="text-xl line-through text-gray-400">
                         {displayCurrencySymbol(currentCurrency)}{getConvertedPrice(product.oldPrice)}
                       </span>
@@ -199,22 +206,23 @@ export default function ProductDetailPage() {
               className={`w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-3 transition duration-200 text-2xl mt-6 ${
                 isAddToCartDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:bg-blue-700'
               }`}
+              aria-label={isAddToCartDisabled ? 'Cannot add to cart' : 'Add to cart'}
             >
               {cartLoading ? (
                  <svg className="animate-spin h-7 w-7 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                  </svg>
-              ) : (
-                <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <circle cx="9" cy="21" r="1" />
-                  <circle cx="20" cy="21" r="1" />
-                  <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                </svg>
-              )}
-              <span className="font-bold text-lg">
-                {cartLoading ? 'Adding to Cart...' : (!isAuthReady ? 'Loading Cart...' : (product.stock === 0 ? 'Out of Stock' : 'Add to Cart'))}
-              </span>
+               ) : (
+                 <svg width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                   <circle cx="9" cy="21" r="1" />
+                   <circle cx="20" cy="21" r="1" />
+                   <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                 </svg>
+               )}
+               <span className="font-bold text-lg">
+                 {cartLoading ? 'Adding to Cart...' : (!isAuthReady ? 'Loading Cart...' : (product.stock === 0 ? 'Out of Stock' : 'Add to Cart'))}
+               </span>
             </button>
           </div>
         </div>

@@ -11,7 +11,7 @@ export default function AboutPage() {
       <div className="min-h-[80vh] w-full py-12 px-4">
         <h1 className="text-4xl font-extrabold mb-8 text-blue-900">About Smartoria</h1>
         <p className="mb-4 text-lg text-gray-700">
-          <strong>Smartoria</strong> is Pakistan's trusted online store for premium mobile accessories and electronics. Our mission is to empower your digital lifestyle with the latest, most reliable, and stylish products—delivered with exceptional customer service.
+          <strong>Smartoria</strong> is Pakistan&apos;s trusted online store for premium mobile accessories and electronics. Our mission is to empower your digital lifestyle with the latest, most reliable, and stylish products—delivered with exceptional customer service.
         </p>
         <p className="mb-4 text-lg text-gray-700">
           Since 2025, Smartoria has been the go-to destination for tech enthusiasts and everyday users alike. We offer a curated selection of genuine products, including chargers, cables, headphones, power banks, and the newest gadgets—all at competitive prices and with fast nationwide delivery.

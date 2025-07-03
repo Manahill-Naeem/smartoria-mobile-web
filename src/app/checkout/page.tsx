@@ -3,16 +3,15 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation'; // Navigation ke liye
-import { useCart } from '@/context/CartContext'; // Cart context se items lene ke liye
-import { useCurrency } from '@/context/CurrencyContext'; // Currency conversion ke liye
+import { useRouter } from 'next/navigation';
+import { useCart } from '@/context/CartContext';
+import { useCurrency } from '@/context/CurrencyContext';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { cartItems, subtotal, totalItems, clearCart, cartLoading, cartError, userId, isAuthReady } = useCart();
   const { currentCurrency, exchangeRateAUDtoPKR, loadingRates, ratesError } = useCurrency();
 
-  // Shipping details ke form ke liye state
   const [shippingDetails, setShippingDetails] = useState({
     fullName: '',
     email: '',
@@ -25,17 +24,13 @@ export default function CheckoutPage() {
 
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [orderPlacementError, setOrderPlacementError] = useState<string | null>(null);
-  const [orderPlacedSuccessfully, setOrderPlacedSuccessfully] = useState(false); // Naya state order ki kamyab placement track karne ke liye
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('cashOnDelivery'); // Payment method state
+  const [orderPlacedSuccessfully, setOrderPlacedSuccessfully] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('cashOnDelivery');
 
-  // Cart empty hone par ya auth errors par redirect karne ke liye useEffect
   useEffect(() => {
-    // Sirf tab redirect karein jab cart empty ho AUR abhi koi order place na hua ho
     if (isAuthReady && !cartLoading && cartItems.length === 0 && !orderPlacedSuccessfully) {
       const timer = setTimeout(() => {
         if (cartItems.length === 0 && !orderPlacedSuccessfully) {
-          // Delay ke baad dobara check karein
-          // alert() ki jagah custom modal istemal karein
           const modalDiv = document.createElement('div');
           modalDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
           modalDiv.innerHTML = `
@@ -49,14 +44,13 @@ export default function CheckoutPage() {
 
           document.getElementById('modal-ok-button')?.addEventListener('click', () => {
             document.body.removeChild(modalDiv);
-            router.push('/'); // Homepage par redirect karein
+            router.push('/');
           });
         }
-      }, 500); // 0.5 second ka delay
+      }, 500);
       return () => clearTimeout(timer);
     }
     if (cartError) {
-      // alert() ki jagah custom modal istemal karein
       const modalDiv = document.createElement('div');
       modalDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
       modalDiv.innerHTML = `
@@ -70,18 +64,16 @@ export default function CheckoutPage() {
 
       document.getElementById('modal-ok-button')?.addEventListener('click', () => {
         document.body.removeChild(modalDiv);
-        router.push('/'); // Homepage par redirect karein
+        router.push('/');
       });
     }
-  }, [cartItems, cartLoading, isAuthReady, cartError, router, orderPlacedSuccessfully]); // orderPlacedSuccessfully ko dependencies mein shamil karein
+  }, [cartItems, cartLoading, isAuthReady, cartError, router, orderPlacedSuccessfully]);
 
-  // Form input change handler
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setShippingDetails(prev => ({ ...prev, [name]: value }));
   };
 
-  // Price conversion logic (ProductCard se copy kiya gaya)
   const getConvertedPrice = (originalPrice: number) => {
     if (loadingRates || exchangeRateAUDtoPKR === null) {
       return `Load ho raha hai...`;
@@ -119,9 +111,8 @@ export default function CheckoutPage() {
     return convertedSub.toFixed(2);
   };
 
-  // Order place karne ka handler
   const handlePlaceOrder = async (e: React.FormEvent) => {
-    e.preventDefault(); // Default form submission ko rokein
+    e.preventDefault();
     setOrderPlacementError(null);
     setIsProcessingOrder(true);
 
@@ -137,7 +128,6 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Form ki bunyadi validation
     const { fullName, email, phone, address, city, zipCode, country } = shippingDetails;
     if (!fullName || !email || !phone || !address || !city || !zipCode || !country) {
       setOrderPlacementError("Baraye meherbani, sabhi shipping details fill karein.");
@@ -146,27 +136,25 @@ export default function CheckoutPage() {
     }
 
     try {
-      // Order details object
       const orderData = {
         userId: userId,
-        items: cartItems.map(item => ({ // Cart items ka snapshot
+        items: cartItems.map(item => ({
           productId: item.productId,
           title: item.title,
           image: item.image,
-          price: item.price, // Asal qeemat (PKR)
+          price: item.price,
           quantity: item.quantity
         })),
-        totalAmountPKR: subtotal, // Asal currency (PKR) mein total amount
-        totalAmountConverted: parseFloat(calculateConvertedSubtotal()), // Converted amount
-        currencyAtOrder: currentCurrency, // Jis currency mein order place kiya gaya
-        exchangeRateAtOrder: exchangeRateAUDtoPKR, // Order ke waqt ki exchange rate
-        shippingDetails: shippingDetails, // Shipping form ki details
-        paymentMethod: selectedPaymentMethod, // Payment method
-        orderDate: new Date().toISOString(), // Timestamp ke liye ISO string
-        status: 'pending', // Order ka initial status
+        totalAmountPKR: subtotal,
+        totalAmountConverted: parseFloat(calculateConvertedSubtotal()),
+        currencyAtOrder: currentCurrency,
+        exchangeRateAtOrder: exchangeRateAUDtoPKR,
+        shippingDetails: shippingDetails,
+        paymentMethod: selectedPaymentMethod,
+        orderDate: new Date().toISOString(),
+        status: 'pending',
       };
 
-      // Order save karne ke liye API call
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -183,20 +171,22 @@ export default function CheckoutPage() {
       const result = await response.json();
       console.log('Order kamyabi se place ho gaya:', result);
 
-      // --- Bohat Zaroori Tabdeeli: orderPlacedSuccessfully ko true karein cart clear karne se PEHLE ---
       setOrderPlacedSuccessfully(true);
-      await clearCart(); // Kamyab order ke baad cart clear karein
-      router.push(`/order-confirmation?orderId=${result.insertedId}`); // Confirmation page par redirect karein
+      await clearCart();
+      router.push(`/order-confirmation?orderId=${result.insertedId}`);
 
-    } catch (error: any) {
+    } catch (error: unknown) { // Changed 'error: any' to 'error: unknown'
       console.error('Order place karne mein ghalti:', error);
-      setOrderPlacementError(error.message || "Order place karne se qasir.");
+      if (error instanceof Error) {
+        setOrderPlacementError(error.message || "Order place karne se qasir.");
+      } else {
+        setOrderPlacementError("Order place karne se qasir. (Unknown error)");
+      }
     } finally {
       setIsProcessingOrder(false);
     }
   };
 
-  // Agar cart load ho raha hai ya tayar nahin hai
   if (!isAuthReady || cartLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
@@ -209,7 +199,6 @@ export default function CheckoutPage() {
     );
   }
 
-  // Agar cart load hone ke baad khali hai
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white py-10 px-4">
@@ -348,7 +337,7 @@ export default function CheckoutPage() {
                   </div>
                   <p className="text-sm text-gray-500 ml-8 -mt-3 mb-4">Aapke darwaze par delivery par pay karein.</p>
 
-                  {/* Bank Transfer Option */}
+                  {/* Bank Transfer Option (Commented out in original, keeping as is) */}
                   {/**
                   <div className="bg-gray-50 border border-gray-200 rounded-md p-4 flex items-center">
                     <input

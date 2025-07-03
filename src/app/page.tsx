@@ -1,11 +1,9 @@
 'use client';
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import ProductCard from "@/components/ProductCard"; // <--- Updated import path
-import { useCurrency } from '../context/CurrencyContext';
-import { useCart } from '../context/CartContext';
+import ProductCard, { Product } from "@/components/ProductCard"; // <--- Import Product interface here
 
-// HeroSection component remains the same
+// HeroSection component remains the same for now, but could be moved to components/HeroSection.tsx
 function HeroSection() {
   return (
     <section className="relative w-full h-[340px] md:h-[400px] flex items-center justify-center bg-neutral-900 overflow-hidden">
@@ -21,7 +19,7 @@ function HeroSection() {
           Phone Accessories
         </h1>
         <p className="text-lg md:text-xl text-white font-medium max-w-2xl">
-          Today's smartphone is a supercomputer that deserves the very best
+          Today&apos;s smartphone is a supercomputer that deserves the very best {/* Already using &apos;, which is correct */}
           accessories to protect and enhance your experience. Also, express your
           own style with the use of funky colours and innovative designs.
         </p>
@@ -30,26 +28,33 @@ function HeroSection() {
   );
 }
 
-// ProductCard component is now imported from its own file
-// No need to define it here anymore.
-
 export default function Home() {
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]); // <--- Specified Product[] type
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); // State for error handling
 
   useEffect(() => {
     async function fetchProducts() {
       setLoading(true);
+      setError(null); // Clear previous errors
       try {
         const res = await fetch("/api/products");
         if (!res.ok) {
-            throw new Error(`Failed to fetch products: ${res.statusText}`);
+          const errorData = await res.json();
+          throw new Error(errorData.message || `Failed to fetch products: ${res.statusText}`);
         }
-        const data = await res.json();
+        const data: Product[] = await res.json(); // <--- Specified Product[] type for data
+        // Ensure data is an array, if not, default to empty array
         setProducts(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Error fetching products for Home page:", error);
-        setProducts([]);
+      } catch (err: unknown) { // <--- Changed 'any' to 'unknown'
+        console.error("Error fetching products for Home page:", err);
+        // Safely access err.message if it's an Error instance
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Failed to load products: An unknown error occurred."); // Generic error for non-Error objects
+        }
+        setProducts([]); // Clear products on error
       } finally {
         setLoading(false);
       }
@@ -62,8 +67,8 @@ export default function Home() {
       <HeroSection />
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex justify-end items-center mb-4">
-          <span className="font-semibold mr-2">Sort by:</span>
-          <select className="bg-white border border-neutral-300 rounded px-3 py-1 font-medium focus:outline-none">
+          <label htmlFor="sort-by" className="font-semibold mr-2">Sort by:</label>
+          <select id="sort-by" className="bg-white border border-neutral-300 rounded px-3 py-1 font-medium focus:outline-none">
             <option>Best selling</option>
             <option>Price: Low to High</option>
             <option>Price: High to Low</option>
@@ -71,7 +76,19 @@ export default function Home() {
           </select>
         </div>
         {loading ? (
-          <div className="text-center py-10">Loading products...</div>
+          <div className="text-center py-10 flex items-center justify-center">
+            <svg className="animate-spin h-8 w-8 text-blue-500 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+            <span className="text-lg text-gray-700">Loading products...</span>
+          </div>
+        ) : error ? (
+          <div className="col-span-full text-center text-red-600 p-8 border border-red-300 bg-red-50 rounded-lg shadow-sm">
+            <p className="font-bold text-xl mb-2">Error loading products!</p>
+            <p>{error}</p>
+            <p className="mt-4 text-gray-700">Please try refreshing the page.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
             {products.length === 0 ? (

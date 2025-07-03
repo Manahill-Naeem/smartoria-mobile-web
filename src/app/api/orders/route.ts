@@ -1,4 +1,4 @@
-// app/api/orders/route.ts
+// ./src/app/api/orders/route.ts
 import clientPromise from '@/utils/mongodb';
 import { NextResponse } from 'next/server';
 
@@ -24,8 +24,11 @@ export async function POST(request: Request) {
     console.log("Order placed successfully with ID:", result.insertedId);
     return NextResponse.json({ message: 'Order placed successfully', insertedId: result.insertedId });
 
-  } catch (error: any) {
+  } catch (error: unknown) { // Changed to unknown
     console.error("Unhandled error in POST /api/orders:", error);
-    return NextResponse.json({ error: 'Failed to place order due to an unexpected error', details: error.message }, { status: 500 });
+    if (error instanceof Error) {
+        return NextResponse.json({ error: 'Failed to place order due to an unexpected error', details: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ error: 'Failed to place order due to an unexpected error', details: 'An unknown error occurred' }, { status: 500 });
   }
 }

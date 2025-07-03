@@ -1,18 +1,12 @@
+// ./src/app/api/convert/route.ts
 import { NextResponse } from 'next/server';
 
-// ***************************************************************
-// IMPORTANT: REPLACE THIS WITH YOUR ACTUAL, VALID API KEY from ExchangeRate-API.com
-// Aapki key yahan hai: 'd91b2c79d985d9ccfcbb79a6'
-// ***************************************************************
-const API_KEY = process.env.NEXT_PUBLIC_EXCHANGE_RATE_API_KEY; // <--- YAHAN APNI ASLI KEY HAI. Good!
+const API_KEY = process.env.NEXT_PUBLIC_EXCHANGE_RATE_API_KEY;
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const baseCurrency = searchParams.get('base') || 'AUD';
 
-  // --- KEY CHANGE HERE: SIMPLIFY THE CHECK ---
-  // Ab hum sirf check karenge ki API_KEY string empty ya undefined toh nahi hai.
-  // Placeholder string se comparison hata diya hai.
   if (!API_KEY) {
     console.error('Exchange Rate API key is missing or not configured.');
     return NextResponse.json({ error: 'Server configuration error: Exchange Rate API key is missing.' }, { status: 500 });
@@ -42,8 +36,12 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ rates: data.conversion_rates });
-  } catch (error: any) {
+  } catch (error: unknown) { // Changed to unknown
     console.error('Server error fetching exchange rates:', error);
-    return NextResponse.json({ error: 'Internal server error while fetching exchange rates', details: String(error) }, { status: 500 });
+    // Type guard for error object
+    if (error instanceof Error) {
+        return NextResponse.json({ error: 'Internal server error while fetching exchange rates', details: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ error: 'Internal server error while fetching exchange rates', details: 'An unknown error occurred' }, { status: 500 });
   }
 }
