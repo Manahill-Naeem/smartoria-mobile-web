@@ -21,7 +21,7 @@ const categories = [
     {
         name: 'Cables',
         sub: [
-            // { name: 'All Cables', href: '/cables' },
+            // { name: 'All Cables', //href: '/cables' },
             { name: 'HDMI', href: '/cables/hdmi' },
             { name: 'USB', href: '/cables/usb' },
             { name: 'Lightning', href: '/cables/lightning' },
@@ -33,7 +33,8 @@ const categories = [
 ];
 
 // CurrencySwitcher component (make sure this is present and correct)
-function CurrencySwitcher() {
+// Added an isMobile prop to allow for conditional styling
+function CurrencySwitcher({ isMobile = false }) {
     const { currentCurrency, setCurrency, loadingRates, ratesError } = useCurrency();
 
     useEffect(() => {
@@ -46,12 +47,12 @@ function CurrencySwitcher() {
     }, [currentCurrency, setCurrency]);
 
     return (
-        <div className="flex items-center bg-neutral-800 rounded-lg px-3 py-1.5 shadow-inner">
-            <span className="text-white text-sm mr-2 font-medium">Currency:</span>
+        <div className={`flex items-center bg-neutral-800 rounded-lg shadow-inner ${isMobile ? 'px-2 py-1' : 'px-3 py-1.5'}`}>
+            <span className={`text-white ${isMobile ? 'text-xs' : 'text-sm'} mr-1 font-medium`}>Currency:</span>
             <select
                 value={currentCurrency}
                 onChange={e => setCurrency(e.target.value as 'PKR' | 'AUD')}
-                className="bg-neutral-800 text-white border-none focus:ring-1 focus:ring-blue-500 focus:outline-none text-sm font-semibold cursor-pointer py-0.5 rounded-md"
+                className={`bg-neutral-800 text-white border-none focus:ring-1 focus:ring-blue-500 focus:outline-none ${isMobile ? 'text-xs' : 'text-sm'} font-semibold cursor-pointer py-0.5 rounded-md`}
                 disabled={loadingRates}
             >
                 <option value="PKR">PKR</option>
@@ -364,13 +365,14 @@ export default function Navbar() {
                 </div>
 
                 {/* Mobile Icons and Hamburger (Visible on Mobile) */}
-                <div className="md:hidden flex items-center space-x-4">
-                    {/* Currency Converter for Mobile */}
-                    <div>
-                        <CurrencySwitcher /> {/* UNCOMMENTED HERE */}
+                {/* Changed space-x-4 to gap-x-2 and added flex-nowrap to prevent wrapping */}
+                <div className="md:hidden flex items-center gap-x-2 flex-nowrap overflow-x-auto">
+                    {/* Currency Converter for Mobile - Pass isMobile prop */}
+                    <div className="flex-shrink-0">
+                        <CurrencySwitcher isMobile={true} />
                     </div>
                     {/* Search Icon for Mobile */}
-                    <button className="text-white hover:text-gray-300 transition-colors duration-200" aria-label="Search">
+                    <button className="text-white hover:text-gray-300 transition-colors duration-200 flex-shrink-0" aria-label="Search">
                         <svg
                             width="22"
                             height="22"
@@ -386,7 +388,7 @@ export default function Navbar() {
                     {/* Cart Icon for Mobile */}
                     <button
                         onClick={() => setIsCartOpen(true)}
-                        className="relative text-white hover:text-gray-300 transition-colors duration-200"
+                        className="relative text-white hover:text-gray-300 transition-colors duration-200 flex-shrink-0"
                         aria-label={`Cart with ${totalItems} items`}
                     >
                         <svg
@@ -415,7 +417,7 @@ export default function Navbar() {
                     </button>
                     {/* Mobile Menu Button */}
                     <button
-                        className="flex items-center px-2 py-1 border rounded text-white border-neutral-300"
+                        className="flex items-center px-2 py-1 border rounded text-white border-neutral-300 flex-shrink-0"
                         onClick={() => setMenuOpen(!menuOpen)}
                         aria-label="Toggle menu"
                     >
@@ -443,8 +445,6 @@ export default function Navbar() {
                             >
                                 Categories <span className="ml-1 text-gray-400">▼</span>
                             </button>
-                            {/* If you want to show subcategories, you'd need another toggle for this on mobile */}
-                            {/* For now, just linking to a main categories page or showing flat list */}
                              <div className="pl-4 border-l border-neutral-700">
                                 {categories.map(cat => (
                                     <div key={cat.name}>
@@ -478,7 +478,7 @@ export default function Navbar() {
                     </div>
                 </div>
             )}
-            {isCartOpen && <CartModal onClose={() => setIsCartOpen(false)} />} 
+            {isCartOpen && <CartModal onClose={() => setIsCartOpen(false)} />}
         </nav>
     );
 }
