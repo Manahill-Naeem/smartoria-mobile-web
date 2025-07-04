@@ -249,6 +249,7 @@ function CartModal({ onClose }: { onClose: () => void }) {
 
 export default function Navbar() {
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
     const { totalItems, cartLoading } = useCart();
 
     return (
@@ -362,6 +363,44 @@ export default function Navbar() {
                 </div>
             </div>
             {isCartOpen && <CartModal onClose={() => setIsCartOpen(false)} />}
+            {/* Mobile Navbar */}
+            <div className="md:hidden bg-neutral-900">
+                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+                    {/* Logo for mobile */}
+                    <Link href="/" className="flex items-center gap-2" onClick={() => setMenuOpen(false)}>
+                        <Image
+                            src="/Smartoria_logo.png"
+                            alt="Smartoria Logo"
+                            width={40}
+                            height={40}
+                            className="h-10 w-auto object-contain"
+                            priority
+                        />
+                        <span className="font-bold text-xl text-white">Smartoria</span>
+                    </Link>
+                    {/* Mobile Menu Button */}
+                    <button
+                        className="flex items-center px-2 py-1 border rounded text-white border-neutral-300"
+                        onClick={() => setMenuOpen(!menuOpen)}
+                        aria-label="Toggle menu"
+                    >
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d={menuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+                        </svg>
+                    </button>
+                </div>
+                {/* Mobile Menu */}
+                {menuOpen && (
+                    <div className="bg-neutral-900 border-t border-neutral-700 px-4 pb-4">
+                        <div className="flex flex-col gap-2 mt-2">
+                            <Link href="/" className="text-white hover:text-blue-400 font-medium" onClick={() => setMenuOpen(false)}>Home</Link>
+                            <Link href="/about" className="text-white hover:text-blue-400 font-medium" onClick={() => setMenuOpen(false)}>About</Link>
+                            <Link href="/contact" className="text-white hover:text-blue-400 font-medium" onClick={() => setMenuOpen(false)}>Contact</Link>
+                            {/* Add more links as needed */}
+                        </div>
+                    </div>
+                )}
+            </div>
         </nav>
     );
 }
