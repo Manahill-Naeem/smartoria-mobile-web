@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { useCurrency } from '../context/CurrencyContext';
+import { useCurrency } from '@/context/CurrencyContext'; // Assuming this path is correct
 import { useCart } from '../context/CartContext';
-import { useRouter } from 'next/navigation'; // Import useRouter
+import { useRouter } from 'next/navigation';
 
-// Categories array remains the same
+// Categories array (assuming it's still the same)
 const categories = [
     {
         name: 'Audio',
@@ -32,20 +32,18 @@ const categories = [
     { name: 'IT & Mobile Accessories', sub: [] },
 ];
 
-// CurrencySwitcher component
+// CurrencySwitcher component (make sure this is present and correct)
 function CurrencySwitcher() {
     const { currentCurrency, setCurrency, loadingRates, ratesError } = useCurrency();
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const storedCurrency = localStorage.getItem('selectedCurrency') as 'PKR' | 'AUD';
-            // Only update if a stored currency exists and is different from the current one
             if (storedCurrency && storedCurrency !== currentCurrency) {
                 setCurrency(storedCurrency);
             }
         }
-    }, [currentCurrency, setCurrency]); // Fixed: Added currentCurrency and setCurrency to dependencies
-
+    }, [currentCurrency, setCurrency]);
 
     return (
         <div className="flex items-center bg-neutral-800 rounded-lg px-3 py-1.5 shadow-inner">
@@ -72,9 +70,9 @@ function CurrencySwitcher() {
     );
 }
 
-// Cart Modal Component
+// Cart Modal Component (make sure this is present and correct)
 function CartModal({ onClose }: { onClose: () => void }) {
-    const router = useRouter(); // useRouter hook
+    const router = useRouter();
     const { cartItems, removeFromCart, updateQuantity, clearCart, cartLoading, cartError, subtotal, totalItems, userId, isAuthReady } = useCart();
     const { currentCurrency, exchangeRateAUDtoPKR, loadingRates, ratesError } = useCurrency();
 
@@ -85,7 +83,7 @@ function CartModal({ onClose }: { onClose: () => void }) {
         if (ratesError) {
             return `Error!`;
         }
-        const numericPrice = Number(originalPrice); // Ensure price is numeric
+        const numericPrice = Number(originalPrice);
         if (isNaN(numericPrice)) {
             console.error("Invalid price for conversion:", originalPrice);
             return "N/A";
@@ -121,10 +119,9 @@ function CartModal({ onClose }: { onClose: () => void }) {
     };
 
     const handleProceedToCheckout = () => {
-        onClose(); // Close the modal
-        router.push('/checkout'); // Navigate to the checkout page
+        onClose();
+        router.push('/checkout');
     };
-
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
@@ -132,7 +129,7 @@ function CartModal({ onClose }: { onClose: () => void }) {
                 <button
                     onClick={onClose}
                     className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-2xl font-bold"
-                    aria-label="Close cart" // Added aria-label for accessibility
+                    aria-label="Close cart"
                 >
                     &times;
                 </button>
@@ -188,7 +185,7 @@ function CartModal({ onClose }: { onClose: () => void }) {
                                                     <button
                                                         onClick={() => updateQuantity(item.productId, item.quantity - 1)}
                                                         className="bg-gray-200 text-gray-700 px-3 py-1 rounded-md hover:bg-gray-300 transition-colors"
-                                                        disabled={cartLoading || item.quantity <= 1} // Disable if quantity is 1 or less
+                                                        disabled={cartLoading || item.quantity <= 1}
                                                         aria-label={`Decrease quantity of ${item.title}`}
                                                     >
                                                         -
@@ -222,7 +219,7 @@ function CartModal({ onClose }: { onClose: () => void }) {
                                     </div>
                                     <div className="mt-6 flex flex-col sm:flex-row gap-4">
                                         <button
-                                            onClick={handleProceedToCheckout} // Link to checkout page
+                                            onClick={handleProceedToCheckout}
                                             className="flex-1 bg-blue-600 text-white font-bold py-3 px-6 rounded-md shadow-md hover:bg-blue-700 transition duration-200 text-lg"
                                             disabled={cartLoading || cartItems.length === 0}
                                         >
@@ -251,9 +248,11 @@ export default function Navbar() {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const { totalItems, cartLoading } = useCart();
+    const router = useRouter(); // This line is correct and necessary for router.push
 
     return (
         <nav className="bg-neutral-900 sticky top-0 z-50 shadow-lg">
+            {/* Desktop Navbar */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-20">
                 {/* Logo */}
                 <div className="flex-shrink-0">
@@ -268,7 +267,8 @@ export default function Navbar() {
                         />
                     </Link>
                 </div>
-                {/* Navigation Links */}
+
+                {/* Navigation Links (Desktop) */}
                 <div className="hidden md:flex space-x-8 items-center">
                     <Link href="/" className="font-semibold text-white hover:text-gray-300 transition-colors duration-200">
                         Home
@@ -309,13 +309,14 @@ export default function Navbar() {
                     <Link href="/contact" className="font-semibold text-white hover:text-gray-300 transition-colors duration-200">
                         Contact
                     </Link>
-                    {/* Currency Converter */}
-                    <div className="ml-6">
-                        <CurrencySwitcher />
-                    </div>
                 </div>
-                {/* Icons */}
-                <div className="flex items-center space-x-6">
+
+                {/* Icons and Currency Switcher (Desktop) */}
+                <div className="hidden md:flex items-center space-x-6">
+                    {/* Currency Converter */}
+                    <div>
+                        <CurrencySwitcher /> {/* UNCOMMENTED HERE */}
+                    </div>
                     {/* Search Icon */}
                     <button className="text-white hover:text-gray-300 transition-colors duration-200" aria-label="Search">
                         <svg
@@ -361,23 +362,57 @@ export default function Navbar() {
                         )}
                     </button>
                 </div>
-            </div>
-            {isCartOpen && <CartModal onClose={() => setIsCartOpen(false)} />}
-            {/* Mobile Navbar */}
-            <div className="md:hidden bg-neutral-900">
-                <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-                    {/* Logo for mobile */}
-                    <Link href="/" className="flex items-center gap-2" onClick={() => setMenuOpen(false)}>
-                        <Image
-                            src="/Smartoria_logo.png"
-                            alt="Smartoria Logo"
-                            width={40}
-                            height={40}
-                            className="h-10 w-auto object-contain"
-                            priority
-                        />
-                        <span className="font-bold text-xl text-white">Smartoria</span>
-                    </Link>
+
+                {/* Mobile Icons and Hamburger (Visible on Mobile) */}
+                <div className="md:hidden flex items-center space-x-4">
+                    {/* Currency Converter for Mobile */}
+                    <div>
+                        <CurrencySwitcher /> {/* UNCOMMENTED HERE */}
+                    </div>
+                    {/* Search Icon for Mobile */}
+                    <button className="text-white hover:text-gray-300 transition-colors duration-200" aria-label="Search">
+                        <svg
+                            width="22"
+                            height="22"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                    </button>
+                    {/* Cart Icon for Mobile */}
+                    <button
+                        onClick={() => setIsCartOpen(true)}
+                        className="relative text-white hover:text-gray-300 transition-colors duration-200"
+                        aria-label={`Cart with ${totalItems} items`}
+                    >
+                        <svg
+                            width="22"
+                            height="22"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle cx="9" cy="21" r="1" />
+                            <circle cx="20" cy="21" r="1" />
+                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                        </svg>
+                        {!cartLoading && totalItems > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                                {totalItems}
+                            </span>
+                        )}
+                        {cartLoading && (
+                            <svg className="animate-spin absolute -top-2 -right-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                            </svg>
+                        )}
+                    </button>
                     {/* Mobile Menu Button */}
                     <button
                         className="flex items-center px-2 py-1 border rounded text-white border-neutral-300"
@@ -389,18 +424,61 @@ export default function Navbar() {
                         </svg>
                     </button>
                 </div>
-                {/* Mobile Menu */}
-                {menuOpen && (
-                    <div className="bg-neutral-900 border-t border-neutral-700 px-4 pb-4">
-                        <div className="flex flex-col gap-2 mt-2">
-                            <Link href="/" className="text-white hover:text-blue-400 font-medium" onClick={() => setMenuOpen(false)}>Home</Link>
-                            <Link href="/about" className="text-white hover:text-blue-400 font-medium" onClick={() => setMenuOpen(false)}>About</Link>
-                            <Link href="/contact" className="text-white hover:text-blue-400 font-medium" onClick={() => setMenuOpen(false)}>Contact</Link>
-                            {/* Add more links as needed */}
-                        </div>
-                    </div>
-                )}
             </div>
+
+            {/* Mobile Menu */}
+            {menuOpen && (
+                <div className="md:hidden bg-neutral-900 border-t border-neutral-700 px-4 pb-4">
+                    <div className="flex flex-col gap-2 mt-2">
+                        <Link href="/" className="text-white hover:text-blue-400 font-medium" onClick={() => setMenuOpen(false)}>Home</Link>
+                        {/* Categories Dropdown for Mobile */}
+                        <div className="relative">
+                            <button
+                                className="w-full text-left py-2 text-white hover:text-blue-400 font-medium flex items-center justify-between"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setMenuOpen(false);
+                                    router.push('/categories');
+                                }}
+                            >
+                                Categories <span className="ml-1 text-gray-400">▼</span>
+                            </button>
+                            {/* If you want to show subcategories, you'd need another toggle for this on mobile */}
+                            {/* For now, just linking to a main categories page or showing flat list */}
+                             <div className="pl-4 border-l border-neutral-700">
+                                {categories.map(cat => (
+                                    <div key={cat.name}>
+                                        <Link
+                                            href={cat.sub.length > 0 ? cat.sub[0].href : '#'} // Link to first sub or '#'
+                                            className="block py-2 text-white hover:text-blue-400 font-medium"
+                                            onClick={() => setMenuOpen(false)}
+                                        >
+                                            {cat.name}
+                                        </Link>
+                                        {cat.sub.length > 0 && (
+                                            <div className="pl-4">
+                                                {cat.sub.map(sub => (
+                                                    <Link
+                                                        key={sub.name}
+                                                        href={sub.href}
+                                                        className="block py-1 text-sm text-gray-300 hover:text-blue-400"
+                                                        onClick={() => setMenuOpen(false)}
+                                                    >
+                                                        {sub.name}
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <Link href="/about" className="text-white hover:text-blue-400 font-medium" onClick={() => setMenuOpen(false)}>About</Link>
+                        <Link href="/contact" className="text-white hover:text-blue-400 font-medium" onClick={() => setMenuOpen(false)}>Contact</Link>
+                    </div>
+                </div>
+            )}
+            {isCartOpen && <CartModal onClose={() => setIsCartOpen(false)} />} 
         </nav>
     );
 }
