@@ -12,7 +12,7 @@ const categories = [
     {
         name: 'Audio',
         sub: [
-            { name: 'All Audio', href: '/audio/all-audio' },
+            // { name: 'All Audio', href: '/audio/all-audio' },
             { name: 'Liquid Ears', href: '/audio/liquid-ears' },
             { name: 'Headphones', href: '/audio/headphones' },
             { name: 'Speakers', href: '/audio/speakers' },
@@ -21,7 +21,7 @@ const categories = [
     {
         name: 'Cables',
         sub: [
-            { name: 'All Cables', href: '/cables' },
+            // { name: 'All Cables', href: '/cables' },
             { name: 'HDMI', href: '/cables/hdmi' },
             { name: 'USB', href: '/cables/usb' },
             { name: 'Lightning', href: '/cables/lightning' },

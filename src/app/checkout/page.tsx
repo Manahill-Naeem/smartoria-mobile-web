@@ -35,8 +35,8 @@ export default function CheckoutPage() {
           modalDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
           modalDiv.innerHTML = `
             <div class="bg-white p-8 rounded-lg shadow-xl text-center">
-              <h3 class="text-xl font-bold mb-4">Aapki cart khali hai.</h3>
-              <p class="mb-6">Checkout karne se pehle items add karein.</p>
+              <h3 class="text-xl font-bold mb-4">Your cart is empty.</h3>
+              <p class="mb-6">Please add items before checking out.</p>
               <button id="modal-ok-button" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">OK</button>
             </div>
           `;
@@ -55,8 +55,8 @@ export default function CheckoutPage() {
       modalDiv.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
       modalDiv.innerHTML = `
         <div class="bg-white p-8 rounded-lg shadow-xl text-center">
-          <h3 class="text-xl font-bold mb-4">Cart load karne mein ghalti:</h3>
-          <p class="mb-6">${cartError}. Dobara koshish karein.</p>
+          <h3 class="text-xl font-bold mb-4">Error loading cart:</h3>
+          <p class="mb-6">${cartError}. Please try again.</p>
           <button id="modal-ok-button" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">OK</button>
         </div>
       `;
@@ -76,17 +76,17 @@ export default function CheckoutPage() {
 
   const getConvertedPrice = (originalPrice: number) => {
     if (loadingRates || exchangeRateAUDtoPKR === null) {
-      return `Load ho raha hai...`;
+      return `Loading...`;
     }
     if (ratesError) {
-      return `Ghalti!`;
+      return `Error!`;
     }
 
     if (currentCurrency === 'PKR') {
       return originalPrice.toFixed(2);
     } else if (currentCurrency === 'AUD') {
       if (exchangeRateAUDtoPKR === 0) {
-        console.error("AUD se PKR exchange rate zero hai, convert nahin kiya ja sakta.");
+        console.error("AUD to PKR exchange rate is zero, cannot convert.");
         return "N/A";
       }
       const priceInAUD = originalPrice / exchangeRateAUDtoPKR;
@@ -117,20 +117,20 @@ export default function CheckoutPage() {
     setIsProcessingOrder(true);
 
     if (!isAuthReady || !userId) {
-      setOrderPlacementError("Cart load ho raha hai ya user authenticated nahin hai. Intezaar karein.");
+      setOrderPlacementError("Cart is loading or user is not authenticated. Please wait.");
       setIsProcessingOrder(false);
       return;
     }
 
     if (cartItems.length === 0) {
-      setOrderPlacementError("Aapki cart khali hai.");
+      setOrderPlacementError("Empty Cart");
       setIsProcessingOrder(false);
       return;
     }
 
     const { fullName, email, phone, address, city, zipCode, country } = shippingDetails;
     if (!fullName || !email || !phone || !address || !city || !zipCode || !country) {
-      setOrderPlacementError("Baraye meherbani, sabhi shipping details fill karein.");
+      setOrderPlacementError("Please fill in all shipping details.");
       setIsProcessingOrder(false);
       return;
     }
@@ -165,22 +165,22 @@ export default function CheckoutPage() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Order place karne mein nakami: ${response.statusText}`);
+        throw new Error(errorData.error || `Failed to place order: ${response.statusText}`);
       }
 
       const result = await response.json();
-      console.log('Order kamyabi se place ho gaya:', result);
+      console.log('Order placed successfully:', result);
 
       setOrderPlacedSuccessfully(true);
       await clearCart();
       router.push(`/order-confirmation?orderId=${result.insertedId}`);
 
-    } catch (error: unknown) { // Changed 'error: any' to 'error: unknown'
-      console.error('Order place karne mein ghalti:', error);
+    } catch (error: unknown) {
+      console.error('Error placing order:', error);
       if (error instanceof Error) {
-        setOrderPlacementError(error.message || "Order place karne se qasir.");
+        setOrderPlacementError(error.message || "Failed to place order.");
       } else {
-        setOrderPlacementError("Order place karne se qasir. (Unknown error)");
+        setOrderPlacementError("Failed to place order. (Unknown error)");
       }
     } finally {
       setIsProcessingOrder(false);
@@ -194,7 +194,7 @@ export default function CheckoutPage() {
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
         </svg>
-        <span className="ml-3 text-lg text-gray-700">Cart load ho raha hai...</span>
+        <span className="ml-3 text-lg text-gray-700">Cart loading...</span>
       </div>
     );
   }
@@ -202,13 +202,13 @@ export default function CheckoutPage() {
   if (cartItems.length === 0) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-white py-10 px-4">
-        <h2 className="text-2xl font-bold text-gray-700 mb-4">Aapki cart khali hai!</h2>
-        <p className="text-gray-600">Aage badhne se pehle kuch items add karein.</p>
+        <h2 className="text-2xl font-bold text-gray-700 mb-4">Your cart is empty!</h2>
+        <p className="text-gray-600">Please add some items before proceeding.</p>
         <button
           onClick={() => router.push('/')}
           className="mt-6 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition"
         >
-          Shopping shuru karein
+          Start Shopping
         </button>
       </div>
     );
@@ -225,7 +225,7 @@ export default function CheckoutPage() {
             <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">Shipping Details</h2>
             <form onSubmit={handlePlaceOrder} className="space-y-6">
               <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Poora Naam</label>
+                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Full Name</label>
                 <input
                   type="text"
                   name="fullName"
@@ -261,7 +261,7 @@ export default function CheckoutPage() {
                 />
               </div>
               <div>
-                <label htmlFor="address" className="block text-sm font-medium text-gray-700">Pata</label>
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
                 <textarea
                   name="address"
                   id="address"
@@ -274,7 +274,7 @@ export default function CheckoutPage() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-700">Sheher</label>
+                  <label htmlFor="city" className="block text-sm font-medium text-gray-700">City</label>
                   <input
                     type="text"
                     name="city"
@@ -298,7 +298,7 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="country" className="block text-sm font-medium text-gray-700">Mulk</label>
+                  <label htmlFor="country" className="block text-sm font-medium text-gray-700">Country</label>
                   <input
                     type="text"
                     name="country"
@@ -313,14 +313,14 @@ export default function CheckoutPage() {
 
               {orderPlacementError && (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4" role="alert">
-                  <p className="font-bold">Order Mein Ghalti:</p>
+                  <p className="font-bold">Order Error:</p>
                   <p>{orderPlacementError}</p>
                 </div>
               )}
 
               {/* Payment Method Section */}
               <div className="mt-8">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Payment Ka Tareeqa</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Payment Method</h3>
                 <div className="space-y-4">
                   {/* Cash On Delivery (COD) Option */}
                   <div className="bg-gray-50 border border-gray-200 rounded-md p-4 flex items-center">
@@ -335,7 +335,7 @@ export default function CheckoutPage() {
                     />
                     <label htmlFor="cod" className="ml-3 text-gray-700 font-medium">Cash On Delivery (COD)</label>
                   </div>
-                  <p className="text-sm text-gray-500 ml-8 -mt-3 mb-4">Aapke darwaze par delivery par pay karein.</p>
+                  <p className="text-sm text-gray-500 ml-8 -mt-3 mb-4">Pay upon delivery at your doorstep.</p>
 
                   {/* Bank Transfer Option (Commented out in original, keeping as is) */}
                   {/**
@@ -355,12 +355,12 @@ export default function CheckoutPage() {
                   {/* Bank Transfer Details (Conditionally Displayed) */}
                   {/* {selectedPaymentMethod === 'bankTransfer' && (
                     <div className="bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-md ml-8 mt-2 shadow-sm">
-                      <p className="font-bold mb-2">Baraye meherbani is account mein payment transfer karein:</p>
+                      <p className="font-bold mb-2">Please transfer payment to this account:</p>
                       <p><strong>Bank Name:</strong> ABC Bank</p>
                       <p><strong>Account Name:</strong> Smartoria Mobile Store</p>
                       <p><strong>Account Number:</strong> 1234567890</p>
                       <p><strong>IBAN:</strong> PKXXABCYYYYYYYYYYYYYYYYY</p>
-                      <p className="mt-2 text-sm">Payment transfer karne ke baad, screen shot ya transaction ID hamare email par share karein: <span className="font-semibold">payment@smartoria.com</span></p>
+                      <p className="mt-2 text-sm">After transferring payment, please share the screenshot or transaction ID to our email: <span className="font-semibold">payment@smartoria.com</span></p>
                     </div>
                   )}
                   */}
@@ -384,14 +384,14 @@ export default function CheckoutPage() {
                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                   </svg>
                 )}
-                <span>{isProcessingOrder ? 'Order Process Ho Raha Hai...' : 'Order Place Karein'}</span>
+                <span>{isProcessingOrder ? 'Processing Order...' : 'Place Order'}</span>
               </button>
             </form>
           </div>
 
           {/* Order Summary */}
           <div className="lg:col-span-1 bg-white p-8 rounded-lg shadow-md h-fit sticky top-28">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">Order Ka Khulasa</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 border-b pb-4">Order Summary</h2>
             <div className="space-y-4">
               {cartItems.map((item) => (
                 <div key={item.productId} className="flex items-center justify-between">
