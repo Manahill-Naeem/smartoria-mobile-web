@@ -18,30 +18,41 @@ export default function SortAndProductGrid({ category, subcategory }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
   const [sort, setSort] = useState("best");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchProducts() {
       setLoading(true);
-      const res = await fetch("/api/products");
-      let data = await res.json();
-      if (!Array.isArray(data)) data = [];
-      // Filter by category/subcategory if provided
-      if (category) {
-        data = data.filter((p: Product) =>
-          p.category?.toLowerCase() === category.toLowerCase()
-        );
+      setError(null);
+      try {
+        const res = await fetch("/api/products");
+        if (!res.ok) {
+          throw new Error(`API error: ${res.status} ${res.statusText}`);
+        }
+        let data = await res.json();
+        if (!Array.isArray(data)) data = [];
+        // Filter by category/subcategory if provided
+        if (category) {
+          data = data.filter((p: Product) =>
+            p.category?.toLowerCase() === category.toLowerCase()
+          );
+        }
+        if (subcategory) {
+          data = data.filter((p: Product) =>
+            p.subcategory?.toLowerCase() === subcategory.toLowerCase()
+          );
+        }
+        // Sort
+        if (sort === "low") data.sort((a: Product, b: Product) => a.price - b.price);
+        else if (sort === "high") data.sort((a: Product, b: Product) => b.price - a.price);
+        else if (sort === "new") data.sort((a: Product, b: Product) => (b._id || 0) > (a._id || 0) ? 1 : -1);
+        setProducts(data);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        setProducts([]);
+      } finally {
+        setLoading(false);
       }
-      if (subcategory) {
-        data = data.filter((p: Product) =>
-          p.subcategory?.toLowerCase() === subcategory.toLowerCase()
-        );
-      }
-      // Sort
-      if (sort === "low") data.sort((a: Product, b: Product) => a.price - b.price);
-      else if (sort === "high") data.sort((a: Product, b: Product) => b.price - a.price);
-      else if (sort === "new") data.sort((a: Product, b: Product) => (b._id || 0) > (a._id || 0) ? 1 : -1);
-      setProducts(data);
-      setLoading(false);
     }
     fetchProducts();
   }, [category, subcategory, sort]);
@@ -60,7 +71,9 @@ export default function SortAndProductGrid({ category, subcategory }: Props) {
           ))}
         </select>
       </div>
-      {loading ? (
+      {error ? (
+        <div className="text-red-500 font-semibold mb-4">Error: {error}</div>
+      ) : loading ? (
         <div>Loading...</div>
       ) : products.length === 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">

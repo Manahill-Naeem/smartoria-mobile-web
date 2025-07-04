@@ -1,9 +1,9 @@
 // src/context/CartContext.tsx
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { initializeApp, FirebaseApp, getApps, getApp } from 'firebase/app'; // Added getApps, getApp
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, Auth } from 'firebase/auth'; // Added Auth
 import {
   getFirestore,
   doc,
@@ -54,24 +54,32 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 interface CartProviderProps {
   children: ReactNode;
+  firebaseConfig: string;
+  initialAuthToken?: string;
+  appId: string;
 }
 
-declare global {
-  var __firebase_config: string | undefined;
-  var __initial_auth_token: string | undefined;
-  var __app_id: string | undefined;
-}
+// Declare Firebase app and services OUTSIDE the component
+// This ensures they are initialized only once per application lifecycle
+let firebaseApp: FirebaseApp | null = null;
+let firebaseAuth: Auth | null = null;
+let firestoreDb: Firestore | null = null;
 
-export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
+export const CartProvider: React.FC<CartProviderProps> = ({ children, firebaseConfig, initialAuthToken, appId }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartLoading, setCartLoading] = useState<boolean>(true);
   const [cartError, setCartError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [db, setDb] = useState<Firestore | null>(null);
+  // Removed db state, will use firestoreDb directly
   const [isAuthReady, setIsAuthReady] = useState<boolean>(false);
 
+  // This useEffect handles Firebase initialization and user authentication
   useEffect(() => {
-    if (typeof window !== 'undefined' && !db) {
+    console.log("CartProvider: useEffect for Firebase init triggered.");
+
+    // Only run this effect if window is defined (client-side) AND Firebase hasn't been initialized globally yet
+    // Using getApps().length checks if *any* Firebase app has been initialized
+    if (typeof window !== 'undefined' && getApps().length === 0 && firebaseConfig) {
       try {
         let config: {
           apiKey?: string;
@@ -83,95 +91,133 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
           measurementId?: string;
         } = {};
 
-        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-          try {
-            config = JSON.parse(__firebase_config);
-          } catch (e: unknown) {
-            console.error("Failed to parse __firebase_config:", e);
-            if (e instanceof Error) {
-                setCartError(`Firebase config parse error: ${e.message}`);
-            } else {
-                setCartError("Firebase config parse error: An unknown error occurred.");
-            }
-            config = {};
+        try {
+          config = JSON.parse(firebaseConfig);
+          console.log("CartProvider: Found and parsed firebaseConfig prop.");
+        } catch (e: unknown) {
+          console.error("CartProvider: Failed to parse firebaseConfig prop:", e);
+          if (e instanceof Error) {
+            setCartError(`Firebase config parse error: ${e.message}`);
+          } else {
+            setCartError("Firebase config parse error: An unknown error occurred.");
           }
-        } else {
-          console.warn("No __firebase_config found. Using dummy config for development.");
-          config = {
-            apiKey: "YOUR_DEV_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID",
-            measurementId: "YOUR_MEASUREMENT_ID"
-          };
+          // Set config to an empty object to prevent further initialization attempts with bad config
+          config = {};
         }
 
         if (!config || Object.keys(config).length === 0 || !config.projectId) {
-          throw new Error("Firebase config is completely missing or empty. Please ensure it's provided or correctly configured for development.");
+          throw new Error("Firebase config is completely missing or empty. Please ensure it's provided as a prop.");
         }
 
-        const app: FirebaseApp = initializeApp(config as { [key: string]: string });
-        const firestoreDb = getFirestore(app);
-        const firebaseAuth = getAuth(app);
+        // Initialize Firebase services and store them in the global variables
+        firebaseApp = initializeApp(config as { [key: string]: string });
+        firestoreDb = getFirestore(firebaseApp);
+        firebaseAuth = getAuth(firebaseApp);
 
-        setDb(firestoreDb);
-
-        const unsubscribeAuth = onAuthStateChanged(firebaseAuth, async (user) => {
-          if (user) {
-            setUserId(user.uid);
-            console.log("Firebase Auth State Changed: User Logged In", user.uid);
-          } else {
-            console.log("Firebase Auth State Changed: No User. Attempting sign-in anonymously...");
-            try {
-              if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(firebaseAuth, __initial_auth_token);
-                setUserId(firebaseAuth.currentUser?.uid || crypto.randomUUID());
-                console.log("Signed in with custom token successfully.");
-              } else {
-                await signInAnonymously(firebaseAuth);
-                setUserId(firebaseAuth.currentUser?.uid || crypto.randomUUID());
-                console.log("Signed in anonymously successfully.");
-              }
-            } catch (anonError: unknown) {
-              console.error("Anonymous sign-in or custom token sign-in failed:", anonError);
-              if (anonError instanceof Error) {
-                setCartError(`Authentication failed: ${anonError.message}. Cart might not be saved.`);
-              } else {
-                setCartError("Authentication failed. Cart might not be saved.");
-              }
-              setUserId(crypto.randomUUID());
-            }
-          }
-          setIsAuthReady(true);
-        });
-
-        return () => {
-          if (unsubscribeAuth) unsubscribeAuth();
-        };
+        console.log("CartProvider: Firebase app, Firestore, and Auth initialized.");
 
       } catch (e: unknown) {
-        console.error("Failed to initialize Firebase:", e);
+        console.error("CartProvider: Failed to initialize Firebase (outer catch):", e);
         if (e instanceof Error) {
-          setCartError(`Firebase initialization error: ${e.message}`);
+          // Check for the "already exists" error, which is harmless in HMR
+          if (!/already exists/.test(e.message)) {
+              setCartError(`Firebase initialization error: ${e.message}`);
+          } else {
+              console.warn("Firebase app already initialized by previous render. Reusing existing instance.");
+              // Retrieve existing instances if this path is taken due to HMR
+              firebaseApp = getApp();
+              firebaseAuth = getAuth(firebaseApp);
+              firestoreDb = getFirestore(firebaseApp);
+          }
         } else {
           setCartError("Firebase initialization error: An unknown error occurred.");
         }
-        setIsAuthReady(true);
       }
+    } else if (typeof window !== 'undefined' && getApps().length > 0) {
+        console.log("CartProvider: Firebase already initialized, reusing existing instance.");
+        // Ensure global variables are set if they weren't explicitly set in this render cycle
+        if (!firebaseApp) firebaseApp = getApp();
+        if (!firebaseAuth) firebaseAuth = getAuth(firebaseApp);
+        if (!firestoreDb) firestoreDb = getFirestore(firebaseApp);
     }
-  }, [db]);
+     else if (typeof window !== 'undefined' && !firebaseConfig) {
+      console.error("CartProvider: Firebase config prop is missing. Cannot initialize Firebase.");
+      setCartError("Firebase config is missing. Please check setup.");
+    }
 
+    // AUTHENTICATION LOGIC: This should always run once Firebase Auth is available
+    // Ensure firebaseAuth is available from the global variable
+    if (firebaseAuth) {
+        const unsubscribeAuth = onAuthStateChanged(firebaseAuth, async (user) => {
+            console.log("CartProvider: onAuthStateChanged callback triggered.");
+
+            // Ensure firebaseAuth is not null in this callback
+            if (!firebaseAuth) {
+                console.error("Firebase Auth instance is unexpectedly null in onAuthStateChanged callback.");
+                setIsAuthReady(true);
+                return;
+            }
+
+            if (user) {
+                setUserId(user.uid);
+                console.log("Firebase Auth State Changed: User Logged In", user.uid);
+            } else {
+                console.log("Firebase Auth State Changed: No User. Attempting sign-in anonymously...");
+                try {
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(firebaseAuth, initialAuthToken);
+                        setUserId(firebaseAuth.currentUser?.uid || crypto.randomUUID());
+                        console.log("CartProvider: Signed in with custom token successfully.");
+                    } else {
+                        await signInAnonymously(firebaseAuth);
+                        setUserId(firebaseAuth.currentUser?.uid || crypto.randomUUID());
+                        console.log("CartProvider: Signed in anonymously successfully.");
+                    }
+                } catch (anonError: unknown) {
+                    console.error("CartProvider: Anonymous sign-in or custom token sign-in failed:", anonError);
+                    if (anonError instanceof Error) {
+                        setCartError(`Authentication failed: ${anonError.message}. Cart might not be saved.`);
+                    } else {
+                        setCartError("Authentication failed. Cart might not be saved.");
+                    }
+                    // Fallback to a random ID if auth truly fails, so cart can still function locally
+                    setUserId(crypto.randomUUID());
+                }
+            }
+            setIsAuthReady(true);
+            console.log("CartProvider: setIsAuthReady(true) called. isAuthReady:", true);
+        });
+
+        return () => {
+            if (unsubscribeAuth) {
+                console.log("CartProvider: Unsubscribing from auth state changes (cleanup).");
+                unsubscribeAuth();
+            }
+        };
+    } else if (typeof window !== 'undefined' && getApps().length > 0 && !firebaseAuth) {
+        // This case should ideally not happen if getAuth(firebaseApp) works, but as a fallback
+        console.error("Firebase Auth instance not available despite app being initialized.");
+        setCartError("Firebase Auth failed to initialize.");
+        setIsAuthReady(true); // Indicate readiness even with error
+    } else {
+        // If firebaseConfig is missing or not client-side, set ready with error
+        setIsAuthReady(true);
+        if (typeof window !== 'undefined' && !firebaseConfig) {
+            console.log("CartProvider: setIsAuthReady(true) due to missing config.");
+        }
+    }
+  }, [firebaseConfig, initialAuthToken]); // Dependencies for this effect are only config-related props
+
+  // This useEffect handles real-time cart item updates
   useEffect(() => {
     let unsubscribe: () => void | undefined;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'development-app-id';
 
-    if (db && userId && isAuthReady) {
+    // Use the globally initialized firestoreDb and firebaseAuth for consistency
+    if (firestoreDb && userId && isAuthReady) {
       setCartLoading(true);
       setCartError(null);
       try {
-        const cartCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/cartItems`);
+        const cartCollectionRef = collection(firestoreDb, `artifacts/${appId}/users/${userId}/cartItems`);
         console.log(`Listening to cart items at: artifacts/${appId}/users/${userId}/cartItems`);
 
         unsubscribe = onSnapshot(cartCollectionRef, (snapshot) => {
@@ -213,12 +259,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         unsubscribe();
       }
     };
-  }, [db, userId, isAuthReady]);
+  }, [userId, isAuthReady, appId]); // Removed db from dependencies, using global firestoreDb
 
   const addToCart = useCallback(async (product: ProductForCart, quantity: number) => {
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'development-app-id';
-
-    if (!db || !userId) {
+    if (!firestoreDb || !userId) { // Use global firestoreDb
       setCartError("Database or user not ready. Cannot add to cart.");
       console.error("addToCart: DB or userId not ready.");
       return;
@@ -234,7 +278,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
         return;
       }
 
-      const cartItemRef = doc(db, `artifacts/${appId}/users/${userId}/cartItems`, actualProductId);
+      const cartItemRef = doc(firestoreDb, `artifacts/${appId}/users/${userId}/cartItems`, actualProductId); // Use global firestoreDb
 
       const existingItem = cartItems.find(item => item.productId === actualProductId);
 
@@ -267,12 +311,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } finally {
       setCartLoading(false);
     }
-  }, [db, userId, cartItems]);
+  }, [userId, cartItems, appId]); // Removed db from dependencies
 
   const removeFromCart = useCallback(async (productId: string) => {
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'development-app-id';
-
-    if (!db || !userId) {
+    if (!firestoreDb || !userId) { // Use global firestoreDb
       setCartError("Database or user not ready. Cannot remove from cart.");
       console.error("removeFromCart: DB or userId not ready.");
       return;
@@ -281,7 +323,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     setCartLoading(true);
 
     try {
-      const cartItemRef = doc(db, `artifacts/${appId}/users/${userId}/cartItems`, productId);
+      const cartItemRef = doc(firestoreDb, `artifacts/${appId}/users/${userId}/cartItems`, productId); // Use global firestoreDb
       await deleteDoc(cartItemRef);
       console.log(`Removed product ${productId} from cart.`);
     } catch (e: unknown) {
@@ -294,12 +336,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } finally {
       setCartLoading(false);
     }
-  }, [db, userId]);
+  }, [userId, appId]); // Removed db from dependencies
 
   const updateQuantity = useCallback(async (productId: string, newQuantity: number) => {
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'development-app-id';
-
-    if (!db || !userId) {
+    if (!firestoreDb || !userId) { // Use global firestoreDb
       setCartError("Database or user not ready. Cannot update quantity.");
       console.error("updateQuantity: DB or userId not ready.");
       return;
@@ -312,7 +352,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     setCartLoading(true);
 
     try {
-      const cartItemRef = doc(db, `artifacts/${appId}/users/${userId}/cartItems`, productId);
+      const cartItemRef = doc(firestoreDb, `artifacts/${appId}/users/${userId}/cartItems`, productId); // Use global firestoreDb
       await updateDoc(cartItemRef, { quantity: newQuantity, addedAt: serverTimestamp() });
       console.log(`Updated quantity for product ${productId} to ${newQuantity}.`);
     } catch (e: unknown) {
@@ -325,12 +365,10 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } finally {
       setCartLoading(false);
     }
-  }, [db, userId, removeFromCart]);
+  }, [userId, removeFromCart, appId]); // Removed db from dependencies
 
   const clearCart = useCallback(async () => {
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'development-app-id';
-
-    if (!db || !userId) {
+    if (!firestoreDb || !userId) { // Use global firestoreDb
       setCartError("Database or user not ready. Cannot clear cart.");
       console.error("clearCart: DB or userId not ready.");
       return;
@@ -339,7 +377,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     setCartLoading(true);
 
     try {
-      const cartCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/cartItems`);
+      const cartCollectionRef = collection(firestoreDb, `artifacts/${appId}/users/${userId}/cartItems`); // Use global firestoreDb
       const querySnapshot = await getDocs(cartCollectionRef);
       const deletePromises = querySnapshot.docs.map(d => deleteDoc(d.ref));
       await Promise.all(deletePromises);
@@ -354,7 +392,7 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children }) => {
     } finally {
       setCartLoading(false);
     }
-  }, [db, userId]);
+  }, [userId, appId]); // Removed db from dependencies
 
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);

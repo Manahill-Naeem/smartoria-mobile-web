@@ -1,4 +1,10 @@
-import SortAndProductGrid from "@/components/SortAndProductGrid";
+import SortAndProductGrid from '@/components/SortAndProductGrid';
+
+// If you want to check Firebase config at runtime for debugging:
+if (typeof window !== "undefined" && window.__firebase_config) {
+  // Optional: log the Firebase config to verify it's loaded
+  // console.log("Firebase config:", JSON.parse(window.__firebase_config));
+}
 
 export default function HeadphonesPage() {
   return (
